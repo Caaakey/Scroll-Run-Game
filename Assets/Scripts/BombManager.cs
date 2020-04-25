@@ -1,38 +1,46 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+
+using UnityEngine;
 
 public class BombManager : MonoBehaviour
 {
+    public static BombManager Get { get; set; } = null;
+
+    public static void AddBomb()
+        => Get.list.Add(Get.UpdateBomb());
+
     public GameObject prefab = null;
-    public float range = 1.7f;
+    public int firstCount = 4;
 
-    public int createCount = 1;
-    public float createTime = 2f;
+    private float range = 0f;
+    private List<IEnumerator> list = new List<IEnumerator>();
 
-    private float waitTime = 0f;
+    private void Awake()
+        => Get = this;
+
     private void Start()
     {
-        waitTime = Time.time + createTime;
+        range = Camera.main.aspect;
+
+        for (int i = 0; i < firstCount; ++i)
+            list.Add(UpdateBomb());
     }
 
     private void Update()
     {
-        if (Time.time >= waitTime)
-        {
-            CreatePrefab();
-            waitTime = Time.time + createTime;
-        }
+        for (int i = 0; i < list.Count; ++i)
+            list[i].MoveNext();
     }
 
-    private void CreatePrefab()
+    private void CreateBomb(float gravity)
     {
-        for (int i = 0; i < createCount; ++i)
-        {
-            Vector2 pos = new Vector2(
+        Vector2 pos = new Vector2(
                 Random.Range(-range, range),
                 transform.localPosition.y);
 
-            Instantiate(prefab, pos, Quaternion.identity, null);
-        }
+        var go = Instantiate(prefab, pos, Quaternion.identity, null);
+        go.GetComponent<Rigidbody2D>().gravityScale = gravity;
     }
 
     private void OnDrawGizmos()
@@ -43,4 +51,20 @@ public class BombManager : MonoBehaviour
                         new Vector3(range, transform.position.y));
     }
 
+    private IEnumerator UpdateBomb()
+    {
+        float gravityScale = Random.Range(0.2f, 1f);
+        float waitTime = Random.Range(0.25f, 1f);
+        float fixedTime = Time.time;
+        while (true)
+        {
+            if (Time.time >= fixedTime + waitTime)
+            {
+                CreateBomb(gravityScale);
+                fixedTime = Time.time;
+            }
+
+            yield return null;
+        }
+    }
 }
